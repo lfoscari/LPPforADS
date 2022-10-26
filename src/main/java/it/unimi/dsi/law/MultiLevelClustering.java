@@ -35,6 +35,8 @@ public class MultiLevelClustering {
             previous = directory + "/cluster-" + i;
             directory.mkdir();
 
+            // Technically I don't need labels because if two nodes will be in the same cluster at the next level,
+            // the map nodeToNode will return the same node, because it's a node -> label -> node map.
             serialize(labels, directory + "/labels-" + i + ".integerarray");
             serialize(nodeToNode, directory + "/node2node-" + i + ".openhashmap");
             BVGraph.store(g, previous);
