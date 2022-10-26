@@ -3,8 +3,8 @@ package it.unimi.dsi.law;
 import it.unimi.dsi.webgraph.BVGraph;
 import it.unimi.dsi.webgraph.ImmutableGraph;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import static it.unimi.dsi.law.Parameters.*;
 
@@ -21,14 +21,27 @@ public class MultiLevelClustering {
         for (int i = 1; i <= LEVELS; i++) {
             System.out.println("Clustering level " + i);
 
-            Cluster cluster = new Cluster(previous);
-            ImmutableGraph g = cluster.clusterize();
+            Cluster cluster = new Cluster();
+            cluster.clusterize(previous);
+
+            ImmutableGraph g = cluster.clusterGraph;
+            AtomicIntegerArray labels = cluster.labels;
 
             File directory = new File(BASEDIR + "cluster-" + i);
             previous = directory + "/cluster-" + i;
             directory.mkdir();
 
+            serialize(labels, directory + "/labels-" + i + ".atomicintegerarray");
             BVGraph.store(g, previous);
+        }
+    }
+
+    private static void serialize(Object o, String filename) {
+        try (FileOutputStream file = new FileOutputStream(filename);
+             ObjectOutputStream out = new ObjectOutputStream(file)) {
+                out.writeObject(o);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 }

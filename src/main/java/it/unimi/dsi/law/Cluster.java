@@ -17,11 +17,9 @@ import static it.unimi.dsi.law.Parameters.*;
  * Clusterize the given symmetric and loop-less graph
  */
 public class Cluster implements Iterable<long[]> {
-    private final String basename;
-
-    public Cluster(String basename) {
-        this.basename = basename;
-    }
+    private String basename;
+    public ImmutableGraph clusterGraph;
+    public AtomicIntegerArray labels;
 
     private class ClusterGraphIterator implements Iterator<long[]> {
         final static double DEFAULT_GAMMA = 0.0078125; // Picked randomly from DEFAULT_GAMMAS
@@ -84,7 +82,11 @@ public class Cluster implements Iterable<long[]> {
         }
     }
 
-    public ImmutableGraph clusterize() throws IOException {
-        return new ScatteredArcsASCIIGraph(iterator(), false, false, 1_000_000, null, null);
+    public void clusterize(String basename) throws IOException {
+        this.basename = basename;
+        ClusterGraphIterator cgi = (ClusterGraphIterator) this.iterator();
+
+        this.clusterGraph = new ScatteredArcsASCIIGraph(cgi, false, false, 1_000_000, null, null);
+        this.labels = cgi.labels;
     }
 }
