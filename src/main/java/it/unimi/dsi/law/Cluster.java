@@ -16,14 +16,11 @@ import static it.unimi.dsi.law.Parameters.*;
 /**
  * Clusterize the given symmetric and loop-less graph
  */
-
 public class Cluster implements Iterable<long[]> {
     private final String basename;
-    private final ProgressLogger progress;
 
-    public Cluster(String basename, ProgressLogger progress) {
+    public Cluster(String basename) {
         this.basename = basename;
-        this.progress = progress;
     }
 
     private class ClusterGraphIterator implements Iterator<long[]> {
@@ -36,13 +33,11 @@ public class Cluster implements Iterable<long[]> {
         private final IntArrayFIFOQueue arcs = new IntArrayFIFOQueue();
 
         public ClusterGraphIterator() throws IOException {
-            ImmutableGraph g = ImmutableGraph.load(basename, progress);
+            ImmutableGraph g = ImmutableGraph.load(basename);
             LayeredLabelPropagation llp = new LayeredLabelPropagation(g, SEED);
 
             this.labels = llp.computeLabels(DEFAULT_GAMMA);
             this.nodes = g.nodeIterator();
-
-            progress.start("nodes-to-cluster-arcs");
         }
 
         @Override
@@ -51,12 +46,8 @@ public class Cluster implements Iterable<long[]> {
                 if (!this.arcs.isEmpty())
                     return true;
 
-                if (!this.nodes.hasNext()) {
-                    progress.done();
+                if (!this.nodes.hasNext())
                     return false;
-                }
-
-                progress.update();
 
                 int node = this.nodes.nextInt();
                 LazyIntIterator successors = this.nodes.successors();
@@ -93,16 +84,7 @@ public class Cluster implements Iterable<long[]> {
         }
     }
 
-    public static ImmutableGraph clusterize(String basename) throws IOException {
-        Logger l = LoggerFactory.getLogger("clustering");
-        ProgressLogger progress = new ProgressLogger(l, LOG_INTERVAL, LOG_UNIT);
-
-        Cluster c = new Cluster(basename, progress);
-        return new ScatteredArcsASCIIGraph(c.iterator(), false, false, 1_000_000, null, progress);
-    }
-
-    public static void main(String[] args) throws IOException {
-        ImmutableGraph g = clusterize(BASEDIR + BASENAME_SYM);
-        BVGraph.store(g, BASEDIR + BASENAME + "-cluster");
+    public ImmutableGraph clusterize() throws IOException {
+        return new ScatteredArcsASCIIGraph(iterator(), false, false, 1_000_000, null, null);
     }
 }

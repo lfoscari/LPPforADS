@@ -26,11 +26,11 @@ public class PrepareGraph {
         Logger l = LoggerFactory.getLogger("preparation");
         ProgressLogger pl = new ProgressLogger(l, LOG_INTERVAL, LOG_UNIT);
 
-        BVGraph.main(new String[] {"-o", "-O", "-L", BASEDIR + BASENAME});
+        BVGraph.main(new String[] {"-o", "-O", "-L", BASENAME});
 
-        ImmutableGraph g = BVGraph.load(BASEDIR + BASENAME, pl);
+        ImmutableGraph g = BVGraph.load(BASENAME, pl);
         g = Transform.symmetrizeOffline(g, BATCH_SIZE, null, pl);
         g = Transform.filterArcs(g, Transform.NO_LOOPS, pl);
-        BVGraph.store(g, BASEDIR + BASENAME_SYM, pl);
+        BVGraph.store(g, BASENAME_SYM, pl);
     }
 }
