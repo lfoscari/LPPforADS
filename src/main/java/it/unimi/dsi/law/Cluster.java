@@ -1,28 +1,25 @@
 package it.unimi.dsi.law;
 
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayFIFOQueue;
 import it.unimi.dsi.law.graph.LayeredLabelPropagation;
-import it.unimi.dsi.logging.ProgressLogger;
 import it.unimi.dsi.webgraph.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 
-import static it.unimi.dsi.law.Parameters.*;
-
 /**
- * Clusterize the given symmetric and loop-less graph
+ * Cluster the given symmetric and loop-less graph
  */
 public class Cluster implements Iterable<long[]> {
     private String basename;
-    public ImmutableGraph clusterGraph;
-    public AtomicIntegerArray labels;
+    public ScatteredArcsASCIIGraph clusterGraph;
+    public AtomicIntegerArray clusterLabels;
+    public Int2IntOpenHashMap labelToNode;
 
     private class ClusterGraphIterator implements Iterator<long[]> {
-        final static double DEFAULT_GAMMA = 0.0078125; // Picked randomly from DEFAULT_GAMMAS
+        final static double DEFAULT_GAMMA = 1.;
         final static int SEED = 1984;
 
         private final NodeIterator nodes;
@@ -34,7 +31,7 @@ public class Cluster implements Iterable<long[]> {
             ImmutableGraph g = ImmutableGraph.load(basename);
             LayeredLabelPropagation llp = new LayeredLabelPropagation(g, SEED);
 
-            this.labels = llp.computeLabels(DEFAULT_GAMMA);
+            this.labels = llp.computeLabels(DEFAULT_GAMMA, 1_000);
             this.nodes = g.nodeIterator();
         }
 
@@ -87,6 +84,16 @@ public class Cluster implements Iterable<long[]> {
         ClusterGraphIterator cgi = (ClusterGraphIterator) this.iterator();
 
         this.clusterGraph = new ScatteredArcsASCIIGraph(cgi, false, false, 1_000_000, null, null);
-        this.labels = cgi.labels;
+        this.clusterLabels = cgi.labels;
+
+        // When building the graph each node identifier is mapped to
+        // a new node to improve efficiency, we need this association
+        // saved to keep track of the right nodes.
+        Int2IntOpenHashMap labelToNode = new Int2IntOpenHashMap();
+        for (int i = 0; i < this.clusterGraph.ids.length; i++)
+            labelToNode.put((int) this.clusterGraph.ids[i], i);
+        this.labelToNode = labelToNode;
+
+        System.out.println("Total clusters: " + labelToNode.size());
     }
 }

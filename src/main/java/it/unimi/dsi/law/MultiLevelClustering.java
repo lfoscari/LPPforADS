@@ -1,9 +1,12 @@
 package it.unimi.dsi.law;
 
+import com.google.common.primitives.Longs;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.webgraph.BVGraph;
-import it.unimi.dsi.webgraph.ImmutableGraph;
+import it.unimi.dsi.webgraph.ScatteredArcsASCIIGraph;
 
 import java.io.*;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import static it.unimi.dsi.law.Parameters.*;
@@ -13,7 +16,7 @@ import static it.unimi.dsi.law.Parameters.*;
  * Everytime operate on the previous cluster graph.
  */
 public class MultiLevelClustering {
-    public static final int LEVELS = 5;
+    public static final int LEVELS = 50;
 
     public static void main(String[] args) throws IOException {
         String previous = BASENAME_SYM;
@@ -24,23 +27,41 @@ public class MultiLevelClustering {
             Cluster cluster = new Cluster();
             cluster.clusterize(previous);
 
-            ImmutableGraph g = cluster.clusterGraph;
-            AtomicIntegerArray labels = cluster.labels;
+            ScatteredArcsASCIIGraph g = cluster.clusterGraph;
+            AtomicIntegerArray labels = cluster.clusterLabels;
 
             File directory = new File(BASEDIR + "cluster-" + i);
             previous = directory + "/cluster-" + i;
             directory.mkdir();
 
-            serialize(labels, directory + "/labels-" + i + ".atomicintegerarray");
+            Int2IntOpenHashMap hm = computeNodeClusterMap(cluster.labelToNode, labels);
+            serialize(hm, directory + "/labels-" + i + ".openhashmap");
             BVGraph.store(g, previous);
         }
     }
 
-    private static void serialize(Object o, String filename) {
+    public static Int2IntOpenHashMap computeNodeClusterMap(Int2IntOpenHashMap labelToNode, AtomicIntegerArray labels) {
+        // Create a minimal perfect hashing function (find a better alternative than a hashmap)
+        Int2IntOpenHashMap map = new Int2IntOpenHashMap(labels.length(), 0.9999999f);
+        for (int i = 0; i < labels.length(); i++)
+            map.put(i, labelToNode.get(labels.get(i)));
+        return map;
+    }
+
+    public static void serialize(Object o, String filename) {
         try (FileOutputStream file = new FileOutputStream(filename);
              ObjectOutputStream out = new ObjectOutputStream(file)) {
-                out.writeObject(o);
+            out.writeObject(o);
         } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static Object deserialize(String filename) {
+        try (FileInputStream file = new FileInputStream(filename);
+             ObjectInputStream out = new ObjectInputStream(file)) {
+            return out.readObject();
+        } catch (IOException | ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
     }
