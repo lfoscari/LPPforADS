@@ -7,6 +7,7 @@ import it.unimi.dsi.webgraph.ImmutableGraph;
 import it.unimi.dsi.webgraph.algo.ParallelBreadthFirstVisit;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import static it.unimi.dsi.law.MultiLevelClustering.LEVELS;
 import static it.unimi.dsi.law.MultiLevelClustering.deserialize;
@@ -21,7 +22,7 @@ public class DistanceSketch {
 
         for (int i = 0; i < 100; i++) {
             int from = random.nextInt(nodes);
-            int to = random.nextInt(nodes);
+            int to = from + random.nextInt(1000);
 
             int distance = bfsDistance(original, from, to);
             if (distance == -1) return;
@@ -35,23 +36,28 @@ public class DistanceSketch {
 
     public static int sketchDistance(int from, int to, int level, ImmutableGraph previous) throws IOException {
         String directory = BASEDIR + "cluster-" + level + "/";
-        Int2IntOpenHashMap labels = (Int2IntOpenHashMap) deserialize(directory + "labels-" + level + ".openhashmap");
-        ImmutableGraph current = BVGraph.load(directory + "cluster-" + level);
+        AtomicIntegerArray labels = (AtomicIntegerArray) deserialize(directory + "labels-" + level + ".integerarray");
 
         int label_from = labels.get(from);
         int label_to = labels.get(to);
 
         if (label_from == label_to) {
-            System.out.print("[" + level + "]\t");
+            System.out.print("* [" + level + "]\t");
             return bfsDistance(previous, from, to);
         }
 
+        ImmutableGraph current = BVGraph.load(directory + "cluster-" + level);
+        Int2IntOpenHashMap nodeToNode = (Int2IntOpenHashMap) deserialize(directory + "node2node-" + level + ".openhashmap");
+
+        int node_from = nodeToNode.get(label_from);
+        int node_to = nodeToNode.get(label_to);
+
         if (level + 1 > LEVELS) {
             System.out.print("[" + level + "]\t");
-            return bfsDistance(current, label_from, label_to);
+            return bfsDistance(current, node_from, node_to);
         }
 
-        return sketchDistance(label_from, label_to, level + 1, current);
+        return sketchDistance(node_from, node_to, level + 1, current);
     }
 
     public static int bfsDistance(ImmutableGraph g, int from, int to) {

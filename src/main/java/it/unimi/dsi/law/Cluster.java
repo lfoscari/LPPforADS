@@ -16,7 +16,7 @@ public class Cluster implements Iterable<long[]> {
     private String basename;
     public ScatteredArcsASCIIGraph clusterGraph;
     public AtomicIntegerArray clusterLabels;
-    public Int2IntOpenHashMap labelToNode;
+    public Int2IntOpenHashMap nodeToNode;
 
     private class ClusterGraphIterator implements Iterator<long[]> {
         final static double DEFAULT_GAMMA = 1.;
@@ -86,13 +86,18 @@ public class Cluster implements Iterable<long[]> {
         this.clusterGraph = new ScatteredArcsASCIIGraph(cgi, false, false, 1_000_000, null, null);
         this.clusterLabels = cgi.labels;
 
-        // When building the graph each node identifier is mapped to
-        // a new node to improve efficiency, we need this association
+        // When building the graph each node identifier (a label at the previous level)
+        // is mapped to a new node to improve efficiency, we need this association
         // saved to keep track of the right nodes.
         Int2IntOpenHashMap labelToNode = new Int2IntOpenHashMap();
         for (int i = 0; i < this.clusterGraph.ids.length; i++)
             labelToNode.put((int) this.clusterGraph.ids[i], i);
-        this.labelToNode = labelToNode;
+
+        Int2IntOpenHashMap nodeToNode = new Int2IntOpenHashMap(cgi.labels.length(), 0.9999999f);
+        for (int i = 0; i < cgi.labels.length(); i++)
+            nodeToNode.put(i, labelToNode.get(cgi.labels.get(i)));
+
+        this.nodeToNode = nodeToNode;
 
         System.out.println("Total clusters: " + labelToNode.size());
     }

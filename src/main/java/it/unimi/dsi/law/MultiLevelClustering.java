@@ -29,13 +29,14 @@ public class MultiLevelClustering {
 
             ScatteredArcsASCIIGraph g = cluster.clusterGraph;
             AtomicIntegerArray labels = cluster.clusterLabels;
+            Int2IntOpenHashMap nodeToNode = cluster.nodeToNode;
 
             File directory = new File(BASEDIR + "cluster-" + i);
             previous = directory + "/cluster-" + i;
             directory.mkdir();
 
-            Int2IntOpenHashMap hm = computeNodeClusterMap(cluster.labelToNode, labels);
-            serialize(hm, directory + "/labels-" + i + ".openhashmap");
+            serialize(labels, directory + "/labels-" + i + ".integerarray");
+            serialize(nodeToNode, directory + "/node2node-" + i + ".openhashmap");
             BVGraph.store(g, previous);
         }
     }
