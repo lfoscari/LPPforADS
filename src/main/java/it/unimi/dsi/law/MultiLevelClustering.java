@@ -1,6 +1,7 @@
 package it.unimi.dsi.law;
 
 import com.google.common.primitives.Longs;
+import it.unimi.dsi.fastutil.ints.Int2FloatOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.webgraph.BVGraph;
 import it.unimi.dsi.webgraph.ScatteredArcsASCIIGraph;
@@ -16,12 +17,15 @@ import static it.unimi.dsi.law.Parameters.*;
  * Everytime operate on the previous cluster graph.
  */
 public class MultiLevelClustering {
-    public static final int LEVELS = 50;
-
     public static void main(String[] args) throws IOException {
-        String previous = BASENAME_SYM;
+        (new File(CLUSTERDIR)).mkdir();
+        multiLevelCluster(10, BASENAME_SYM, CLUSTERDIR);
+    }
 
-        for (int i = 1; i <= LEVELS; i++) {
+    public static void multiLevelCluster(int levels, String basename, String clustersDirectory) throws IOException {
+        String previous = basename;
+
+        for (int i = 1; i <= levels; i++) {
             System.out.println("Clustering level " + i);
 
             Cluster cluster = new Cluster();
@@ -30,25 +34,23 @@ public class MultiLevelClustering {
             ScatteredArcsASCIIGraph g = cluster.clusterGraph;
             AtomicIntegerArray labels = cluster.clusterLabels;
             Int2IntOpenHashMap nodeToNode = cluster.nodeToNode;
+            Int2FloatOpenHashMap clusterSize = cluster.clusterSize;
+            int graphRadius = cluster.graphRadius;
 
-            File directory = new File(BASEDIR + "cluster-" + i);
-            previous = directory + "/cluster-" + i;
+            File directory = new File(clustersDirectory + "cluster-" + i);
+            String current = directory + "/cluster";
             directory.mkdir();
 
             // Technically I don't need labels because if two nodes will be in the same cluster at the next level,
             // the map nodeToNode will return the same node, because it's a node -> label -> node map.
-            serialize(labels, directory + "/labels-" + i + ".integerarray");
-            serialize(nodeToNode, directory + "/node2node-" + i + ".openhashmap");
-            BVGraph.store(g, previous);
-        }
-    }
+            serialize(labels, directory + "/cluster.labels");
+            serialize(nodeToNode, directory + "/cluster.nodemap");
+            serialize(clusterSize, directory + "/cluster.clustersize");
+            serialize(graphRadius, directory + "/radius.int");
+            BVGraph.store(g, directory + "/cluster");
 
-    public static Int2IntOpenHashMap computeNodeClusterMap(Int2IntOpenHashMap labelToNode, AtomicIntegerArray labels) {
-        // Create a minimal perfect hashing function (find a better alternative than a hashmap)
-        Int2IntOpenHashMap map = new Int2IntOpenHashMap(labels.length(), 0.9999999f);
-        for (int i = 0; i < labels.length(); i++)
-            map.put(i, labelToNode.get(labels.get(i)));
-        return map;
+            previous = current;
+        }
     }
 
     public static void serialize(Object o, String filename) {
