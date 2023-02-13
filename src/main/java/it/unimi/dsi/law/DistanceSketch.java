@@ -8,6 +8,7 @@ import it.unimi.dsi.webgraph.ImmutableGraph;
 import it.unimi.dsi.webgraph.algo.ParallelBreadthFirstVisit;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import static it.unimi.dsi.law.MultiLevelClustering.deserialize;
@@ -18,7 +19,7 @@ public class DistanceSketch {
     final static int nodes = 862664;
 
     public static void main(String[] args) throws IOException {
-        ImmutableGraph original = BVGraph.load(BASENAME_SYM);
+        ImmutableGraph original = BVGraph.load(basenameSymmetric.toString());
         float meanError = 0;
 
         for (int i = 0; i < 100; i++) {
@@ -26,8 +27,9 @@ public class DistanceSketch {
             int to = from + random.nextInt(1000);
 
             int distance = bfsDistance(original, from, to);
-            if (distance == -1)
+            if (distance == -1) {
                 return;
+            }
 
             float approxDistance = sketchDistance(from, to, 10);
             meanError = (meanError * i + (Math.abs(distance - approxDistance))) / (i + 1);
@@ -39,20 +41,22 @@ public class DistanceSketch {
     }
 
     public static float sketchDistance(int from, int to, int levels) throws IOException {
-        if (from == to)
+        if (from == to) {
             return 0f;
+        }
 
         for (int level = 1; level < levels; level++) {
-            String directory = CLUSTERDIR + "cluster-" + level + "/";
-            AtomicIntegerArray labels = (AtomicIntegerArray) deserialize(directory + "cluster.labels");
+            Path directory = clusterDirectory.resolve("cluster-" + level);
+            AtomicIntegerArray labels = (AtomicIntegerArray) deserialize(directory.resolve("cluster.labels"));
 
             int label_from = labels.get(from);
             int label_to = labels.get(to);
 
-            if (label_from == label_to)
+            if (label_from == label_to) {
                 return sketchDistanceAtLevel(level - 1, from, to);
+            }
 
-            Int2IntOpenHashMap nodeToNode = (Int2IntOpenHashMap) deserialize(directory + "cluster.nodemap");
+            Int2IntOpenHashMap nodeToNode = (Int2IntOpenHashMap) deserialize(directory.resolve("cluster.nodemap"));
 
             from = nodeToNode.get(label_from);
             to = nodeToNode.get(label_to);
@@ -71,26 +75,26 @@ public class DistanceSketch {
     }
 
     private static float clusterRadiusAtLevel(int level, int from) {
-        if (level == 0)
+        if (level == 0) {
             return 0f;
+        }
 
-        Int2FloatOpenHashMap clusterSizes = (Int2FloatOpenHashMap) deserialize(CLUSTERDIR + "cluster-" + level + "/cluster.clustersize");
-        int graphRadius = (int) deserialize(CLUSTERDIR + "cluster-" + level + "/radius.int");
+        Int2FloatOpenHashMap clusterSizes = (Int2FloatOpenHashMap) deserialize(clusterDirectory.resolve("cluster-" + level).resolve("cluster.clustersize"));
+        int graphRadius = (int) deserialize(clusterDirectory.resolve("cluster-" + level).resolve("radius.int"));
 
         return clusterSizes.get(from) * graphRadius;
     }
 
     private static ImmutableGraph loadLevel(int level) throws IOException {
         if (level == 0) {
-            return BVGraph.load(BASENAME_SYM);
+            return BVGraph.load(basenameSymmetric.toString());
         }
 
-        return BVGraph.load(CLUSTERDIR + "cluster-" + level + "/cluster");
+        return BVGraph.load(clusterDirectory + "cluster-" + level + "/cluster");
     }
 
     public static int bfsDistance(ImmutableGraph g, int from, int to) {
-        ParallelBreadthFirstVisit bfs =
-                new ParallelBreadthFirstVisit(g, 0, false, null);
+        ParallelBreadthFirstVisit bfs = new ParallelBreadthFirstVisit(g, 0, false, null);
         bfs.visit(from);
 
         int distance = -1;

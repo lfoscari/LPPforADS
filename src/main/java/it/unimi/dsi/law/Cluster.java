@@ -8,6 +8,7 @@ import it.unimi.dsi.webgraph.*;
 import it.unimi.dsi.webgraph.algo.SumSweepUndirectedDiameterRadius;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicIntegerArray;
@@ -22,8 +23,8 @@ public class Cluster {
     public Int2FloatOpenHashMap clusterSize;
     public int graphRadius;
 
-    public void clusterize(String basename) throws IOException {
-        ImmutableGraph graph = BVGraph.load(basename);
+    public void clusterize(Path basename) throws IOException {
+        ImmutableGraph graph = BVGraph.load(basename.toString());
         ClusterGraphIterator cgi = new ClusterGraphIterator(graph);
 
         this.clusterGraph = new ScatteredArcsASCIIGraph(cgi.iterator(), false, false, 1_000_000, null, null);

@@ -1,13 +1,12 @@
 package it.unimi.dsi.law;
 
-import com.google.common.primitives.Longs;
 import it.unimi.dsi.fastutil.ints.Int2FloatOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.webgraph.BVGraph;
 import it.unimi.dsi.webgraph.ScatteredArcsASCIIGraph;
 
 import java.io.*;
-import java.util.Arrays;
+import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import static it.unimi.dsi.law.Parameters.*;
@@ -18,12 +17,12 @@ import static it.unimi.dsi.law.Parameters.*;
  */
 public class MultiLevelClustering {
     public static void main(String[] args) throws IOException {
-        (new File(CLUSTERDIR)).mkdir();
-        multiLevelCluster(10, BASENAME_SYM, CLUSTERDIR);
+        clusterDirectory.toFile().mkdir();
+        multiLevelCluster(10, basenameSymmetric, clusterDirectory);
     }
 
-    public static void multiLevelCluster(int levels, String basename, String clustersDirectory) throws IOException {
-        String previous = basename;
+    public static void multiLevelCluster(int levels, Path basename, Path clustersDirectory) throws IOException {
+        Path previous = basename;
 
         for (int i = 1; i <= levels; i++) {
             System.out.println("Clustering level " + i);
@@ -37,24 +36,24 @@ public class MultiLevelClustering {
             Int2FloatOpenHashMap clusterSize = cluster.clusterSize;
             int graphRadius = cluster.graphRadius;
 
-            File directory = new File(clustersDirectory + "cluster-" + i);
-            String current = directory + "/cluster";
-            directory.mkdir();
+            Path directory = Path.of(clustersDirectory + "cluster-" + i);
+            Path current = directory.resolve("cluster");
+            directory.toFile().mkdir();
 
             // Technically I don't need labels because if two nodes will be in the same cluster at the next level,
             // the map nodeToNode will return the same node, because it's a node -> label -> node map.
-            serialize(labels, directory + "/cluster.labels");
-            serialize(nodeToNode, directory + "/cluster.nodemap");
-            serialize(clusterSize, directory + "/cluster.clustersize");
-            serialize(graphRadius, directory + "/radius.int");
-            BVGraph.store(g, directory + "/cluster");
+            serialize(labels, directory.resolve("cluster.labels"));
+            serialize(nodeToNode, directory.resolve("cluster.nodemap"));
+            serialize(clusterSize, directory.resolve("cluster.clustersize"));
+            serialize(graphRadius, directory.resolve("radius.int"));
+            BVGraph.store(g, directory.resolve("cluster").toString());
 
             previous = current;
         }
     }
 
-    public static void serialize(Object o, String filename) {
-        try (FileOutputStream file = new FileOutputStream(filename);
+    public static void serialize(Object o, Path filename) {
+        try (FileOutputStream file = new FileOutputStream(filename.toFile());
              ObjectOutputStream out = new ObjectOutputStream(file)) {
             out.writeObject(o);
         } catch (IOException e) {
@@ -62,8 +61,8 @@ public class MultiLevelClustering {
         }
     }
 
-    public static Object deserialize(String filename) {
-        try (FileInputStream file = new FileInputStream(filename);
+    public static Object deserialize(Path filename) {
+        try (FileInputStream file = new FileInputStream(filename.toFile());
              ObjectInputStream out = new ObjectInputStream(file)) {
             return out.readObject();
         } catch (IOException | ClassNotFoundException e) {
