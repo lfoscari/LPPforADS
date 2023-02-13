@@ -2,16 +2,16 @@ package it.unimi.dsi.law;
 
 import it.unimi.dsi.fastutil.ints.Int2FloatOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntArrayFIFOQueue;
-import it.unimi.dsi.law.graph.LayeredLabelPropagation;
 import it.unimi.dsi.webgraph.*;
 import it.unimi.dsi.webgraph.algo.SumSweepUndirectedDiameterRadius;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicIntegerArray;
+
+import static it.unimi.dsi.law.Parameters.resources;
 
 /**
  * Cluster the given symmetric and loop-less graph
@@ -27,7 +27,10 @@ public class Cluster {
         ImmutableGraph graph = BVGraph.load(basename.toString());
         ClusterGraphIterator cgi = new ClusterGraphIterator(graph);
 
-        this.clusterGraph = new ScatteredArcsASCIIGraph(cgi.iterator(), false, false, 1_000_000, null, null);
+        File tempDir = Files.createTempDirectory(resources, "cluster_temp").toFile();
+        tempDir.deleteOnExit();
+
+        this.clusterGraph = new ScatteredArcsASCIIGraph(cgi.iterator(), false, false, 1_000_000, tempDir, null);
         this.clusterLabels = cgi.labels;
 
         // When building the graph each node identifier (a label at the previous level)
@@ -64,7 +67,14 @@ public class Cluster {
         // https://webgraph.di.unimi.it/docs/it/unimi/dsi/webgraph/algo/SumSweepUndirectedDiameterRadius.html
         // Will it work? Who knows...
 
-        SumSweepUndirectedDiameterRadius radius = new SumSweepUndirectedDiameterRadius(this.clusterGraph, SumSweepUndirectedDiameterRadius.OutputLevel.RADIUS, null);
+        tempDir = Files.createTempDirectory(resources, "cluster_temp_graph").toFile();
+        tempDir.mkdir();
+        tempDir.deleteOnExit();
+
+        BVGraph.store(this.clusterGraph, tempDir + "sequential");
+        BVGraph randomAccessGraph = BVGraph.load(tempDir + "sequential");
+
+        SumSweepUndirectedDiameterRadius radius = new SumSweepUndirectedDiameterRadius(randomAccessGraph, SumSweepUndirectedDiameterRadius.OutputLevel.RADIUS, null);
         radius.compute();
         graphRadius = radius.getRadius();
 

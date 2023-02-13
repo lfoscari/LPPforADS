@@ -10,27 +10,32 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.nio.file.Path;
 
 import static it.unimi.dsi.law.Parameters.*;
 
 /**
  * Compute offsets on the given graph, make the graph symmetric and remove loops.
- * All steps needed for clusterization. (you may need to adjust the BATCH_SIZE parameter)
+ * All steps needed for clusterization.
  */
 public class PrepareGraph {
-    public static final int BATCH_SIZE = 1_000_000;
-
-    public static void main(String[] args) throws JSAPException, IOException, ClassNotFoundException, InvocationTargetException, IllegalAccessException, NoSuchMethodException, InstantiationException {
-        ProgressLogger progress = new ProgressLogger(LoggerFactory.getLogger("preparation"));
-
+    public static void main(String[] args) throws IOException {
         graph.toFile().mkdir();
         graphSymmetric.toFile().mkdir();
 
-        BVGraph.main(new String[] {"-o", "-O", "-L", basename.toString()});
+        computeOffsets(basename);
+        ImmutableGraph graph = BVGraph.load(basename.toString());
+        graph = Transform.symmetrize(graph, (ImmutableGraph) null);
+        graph = Transform.filterArcs(graph, Transform.NO_LOOPS);
+        BVGraph.store(graph, basenameSymmetric.toString());
+        computeOffsets(basenameSymmetric);
+    }
 
-        ImmutableGraph g = BVGraph.load(basename.toString(), progress);
-        g = Transform.symmetrizeOffline(g, BATCH_SIZE, resources.toFile(), progress);
-        g = Transform.filterArcs(g, Transform.NO_LOOPS, progress);
-        BVGraph.store(g, basenameSymmetric.toString(), progress);
+    static void computeOffsets(Path pathToGraph) {
+        try {
+            BVGraph.main(new String[]{"-o", "-O", "-L", pathToGraph.toString()});
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }

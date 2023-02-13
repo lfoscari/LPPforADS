@@ -2,6 +2,7 @@ package it.unimi.dsi.law;
 
 import it.unimi.dsi.fastutil.ints.Int2FloatOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.io.BinIO;
 import it.unimi.dsi.webgraph.BVGraph;
 import it.unimi.dsi.webgraph.ScatteredArcsASCIIGraph;
 
@@ -16,12 +17,14 @@ import static it.unimi.dsi.law.Parameters.*;
  * Everytime operate on the previous cluster graph.
  */
 public class MultiLevelClustering {
+    public static final int LEVELS = 10;
+
     public static void main(String[] args) throws IOException {
         clusterDirectory.toFile().mkdir();
-        multiLevelCluster(10, basenameSymmetric, clusterDirectory);
+        multiLevelClustering(LEVELS, basenameSymmetric, clusterDirectory);
     }
 
-    public static void multiLevelCluster(int levels, Path basename, Path clustersDirectory) throws IOException {
+    public static void multiLevelClustering(int levels, Path basename, Path clustersDirectory) throws IOException {
         Path previous = basename;
 
         for (int i = 1; i <= levels; i++) {
@@ -30,43 +33,24 @@ public class MultiLevelClustering {
             Cluster cluster = new Cluster();
             cluster.clusterize(previous);
 
-            ScatteredArcsASCIIGraph g = cluster.clusterGraph;
+            ScatteredArcsASCIIGraph graph = cluster.clusterGraph;
             AtomicIntegerArray labels = cluster.clusterLabels;
             Int2IntOpenHashMap nodeToNode = cluster.nodeToNode;
             Int2FloatOpenHashMap clusterSize = cluster.clusterSize;
             int graphRadius = cluster.graphRadius;
 
-            Path directory = Path.of(clustersDirectory + "cluster-" + i);
-            Path current = directory.resolve("cluster");
+            Path directory = clustersDirectory.resolve("cluster-" + i);
             directory.toFile().mkdir();
 
             // Technically I don't need labels because if two nodes will be in the same cluster at the next level,
             // the map nodeToNode will return the same node, because it's a node -> label -> node map.
-            serialize(labels, directory.resolve("cluster.labels"));
-            serialize(nodeToNode, directory.resolve("cluster.nodemap"));
-            serialize(clusterSize, directory.resolve("cluster.clustersize"));
-            serialize(graphRadius, directory.resolve("radius.int"));
-            BVGraph.store(g, directory.resolve("cluster").toString());
+            BinIO.storeObject(labels, directory.resolve("cluster.labels").toFile());
+            BinIO.storeObject(nodeToNode, directory.resolve("cluster.nodemap").toFile());
+            BinIO.storeObject(clusterSize, directory.resolve("cluster.clustersize").toFile());
+            BinIO.storeObject(graphRadius, directory.resolve("radius.int").toFile());
+            BVGraph.store(graph, directory.resolve("cluster").toString());
 
-            previous = current;
-        }
-    }
-
-    public static void serialize(Object o, Path filename) {
-        try (FileOutputStream file = new FileOutputStream(filename.toFile());
-             ObjectOutputStream out = new ObjectOutputStream(file)) {
-            out.writeObject(o);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public static Object deserialize(Path filename) {
-        try (FileInputStream file = new FileInputStream(filename.toFile());
-             ObjectInputStream out = new ObjectInputStream(file)) {
-            return out.readObject();
-        } catch (IOException | ClassNotFoundException e) {
-            throw new RuntimeException(e);
+            previous = directory.resolve("cluster");
         }
     }
 }
